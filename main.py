@@ -9,8 +9,8 @@ newsapi = NewsApiClient(api_key=newsApi_token)
 top_headlines = newsapi.get_top_headlines(q='war',
                                           category='business')
 
+state = 0
 
-# /v2/sources
 #sources = newsapi.get
 print(top_headlines['articles'][0]['title'])
 print(top_headlines['totalResults'])
@@ -34,6 +34,49 @@ print(data)
 # con.close() //FIXME: How correctly close current connection?
 
 bot = telebot.TeleBot(telegram_token, parse_mode=None)
+keyboard = telebot.types.ReplyKeyboardMarkup(True)
+keyboard.row('Add news category', 'Add news keyword')
+keyboard.row('Show my categories', 'Show my keywords')
+keyboard.row('Remove category', 'Remove keyword')
+
+
+def add_category(message):
+    cat_data = cur.execute(f"SELECT * FROM categories WHERE cat_name = '{message.text}'").fetchone()
+    if cat_data is None:
+        cur.execute(f"INSERT INTO categories (cat_name, user_id) VALUES "
+                    f" ('{message.text}',"
+                    f" {message.from_user.id})")
+        con.commit()
+    else:
+        bot.reply_to(message, "This category is already exists")
+
+
+def add_keyword(message):
+    key_data = cur.execute(f"SELECT * FROM keywords WHERE word_name = '{message.text}'").fetchone()
+    if key_data is None:
+        cur.execute(f"INSERT INTO keywords (word_name, user_id) VALUES "
+                    f" ('{message.text}',"
+                    f" {message.from_user.id})")
+        con.commit()
+    else:
+        bot.reply_to(message, "This keyword is already exists")
+
+
+def show_categories(message):
+    pass
+
+
+def show_keywords(message):
+    pass
+
+
+def remove_category(message):
+    pass
+
+
+def remove_keyword(message):
+    pass
+
 
 
 @bot.message_handler(commands=['start'])
@@ -45,17 +88,57 @@ def send_welcome(message):
                     f" '{message.from_user.first_name}',"
                     f" '{message.from_user.last_name}')")
         con.commit()
-    bot.reply_to(message, f"Hello {message.from_user.first_name}, nice to meet you!")
+    bot.reply_to(message, f"Hello {message.from_user.first_name}, nice to meet you!\n Choose what you want!", reply_markup=keyboard)
 
 
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
-    bot.reply_to(message, "There is a short list of possible commands")
+    print(message)
+    bot.reply_to(message, f"msg = {message.text} There is a short list of possible commands")
 
 
-@bot.message_handler(func=lambda m: True)
-def echo_all(message):
-    bot.reply_to(message, message.text)
+@bot.message_handler(content_types=["text"])
+def main(message):
+    global state
+
+    if state == 1:
+        add_category(message)
+        state = 0
+    elif state == 2:
+        add_keyword(message)
+        state = 0
+    elif state == 3:
+        show_categories(message)
+        state = 0
+    elif state == 4:
+        show_keywords(message)
+        state = 0
+    elif state == 5:
+        remove_category(message)
+        state = 0
+    else:
+        remove_keyword(message)
+        state = 0
+
+    bot.send_message(message.chat.id, 'done', reply_markup=telebot.types.ReplyKeyboardRemove())
+    if message.text == "Add news category":
+        state = 1
+        keyboard1 = telebot.types.ReplyKeyboardMarkup(True)
+        keyboard1.row('sports', 'business')
+        keyboard1.row('entertainment', 'general')
+        keyboard1.row('health', 'science')
+        keyboard1.row('technology')
+        bot.send_message(message.chat.id, "Choose the possible categories", reply_markup=keyboard1)
+    elif message.text == 'Add news keyword':
+        state = 2
+    elif message.text == 'Show my categories':
+        pass
+    elif message.text == 'Show my keywords':
+        pass
+    elif message.text == 'Remove category':
+        pass
+    elif message.text == 'Remove keyword':
+        pass
 
 
 bot.polling()

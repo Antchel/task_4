@@ -30,7 +30,9 @@ keyboard.row('Remove category', 'Remove keyword')
 
 
 def add_category(message):
-    cat_data = cur.execute(f"SELECT * FROM categories WHERE cat_name = '{message.text}'").fetchone()
+    cat_data = cur.execute(f"SELECT * FROM categories WHERE cat_name = '{message.text}' "
+                           f"AND user_id = {message.from_user.id}").fetchone()
+    print(cat_data)
     if cat_data is None:
         cur.execute(f"INSERT INTO categories (cat_name, user_id) VALUES "
                     f" ('{message.text}',"
@@ -41,7 +43,8 @@ def add_category(message):
 
 
 def add_keyword(message):
-    key_data = cur.execute(f"SELECT * FROM keywords WHERE word_name = '{message.text}'").fetchone()
+    key_data = cur.execute(f"SELECT * FROM keywords WHERE word_name = '{message.text}' "
+                           f"AND user_id = {message.from_user.id}").fetchone()
     if key_data is None:
         cur.execute(f"INSERT INTO keywords (word_name, user_id) VALUES "
                     f" ('{message.text}',"
@@ -63,7 +66,7 @@ def show_keywords(message):
     user_keyw = cur.execute(f"SELECT word_name FROM keywords WHERE user_id = {message.from_user.id}").fetchall()
     if user_keyw is None:
         bot.reply_to(message, "You haven't any keywords")
-    else:  
+    else:
         bot.reply_to(message, f"List of your chosen categories : {user_keyw}")
 
 
@@ -77,7 +80,6 @@ def remove_keyword(message):
     con.commit()
 
 
-
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     user_data = cur.execute(f"SELECT * FROM users WHERE user_id = {message.from_user.id}").fetchone()
@@ -87,51 +89,70 @@ def send_welcome(message):
                     f" '{message.from_user.first_name}',"
                     f" '{message.from_user.last_name}')")
         con.commit()
-    bot.reply_to(message, f"Hello {message.from_user.first_name}, nice to meet you!\n Choose what you want!", reply_markup=keyboard)
+    bot.reply_to(message, f"Hello {message.from_user.first_name}, nice to meet you!\n Choose what you want!",
+                 reply_markup=keyboard)
 
 
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
     print(message)
     bot.reply_to(message, f"msg = {message.text} There is a short list of possible commands")
-    
-    
+
+
 @bot.message_handler(commands=['show_news'])
 def get_news(message):
     bot.reply_to(message, "News list : \n")
     newsapi = NewsApiClient(api_key=newsApi_token)
-    user_cats: List[Any] = cur.execute(f"SELECT cat_name FROM categories WHERE user_id = {message.from_user.id}").fetchall()
-    user_keyw: List[Any] = cur.execute(f"SELECT word_name FROM keywords WHERE user_id = {message.from_user.id}").fetchall()
-    print(type(user_cats))
-    print(type(user_keyw))
-    [i[0] for i in user_cats]
-    print(user_cats)
-    print(user_keyw)
-    top_headlines = newsapi.get_top_headlines(q=user_cats,
-                                              category=user_cats)
-    # sources = newsapi.get
-    bot.reply_to(message, f"{top_headlines['totalResults']} \n {top_headlines['articles'][0]['title']}")
+    user_cats: List[Any] = cur.execute(
+        f"SELECT cat_name FROM categories WHERE user_id = {message.from_user.id}").fetchall()
+    user_keyw: List[Any] = cur.execute(
+        f"SELECT word_name FROM keywords WHERE user_id = {message.from_user.id}").fetchall()
+
+    category_list = [item for t in user_cats for item in t]
+    keyword_list = [item for t in user_keyw for item in t]
+
+    for cat in category_list:
+        for keyword in keyword_list:
+            top_headlines = newsapi.get_top_headlines(q=keyword,
+                                                      category=cat,
+                                                      page_size=10,
+                                                      page=1)
+            print(top_headlines['totalResults'])
+            print(keyword)
+            print(cat)
+            print(keyword_list)
+            print(category_list)
+            if top_headlines['totalResults']:
+                if top_headlines['totalResults'] > 10:
+                    cnt = 10
+                else:
+                    cnt = top_headlines['totalResults']
+                for i in range(cnt):
+                    print(top_headlines)
+                    print(cnt)
+                    print(i)
+                    bot.reply_to(message, f"====== {i+1} Article =========\n")
+                    bot.reply_to(message, f" Title \n {top_headlines['articles'][i]['title']}\n"
+                                          f" Link {top_headlines['articles'][i]['url']}\n")
+    else:
+        bot.reply_to(message, "Can't found any news!\n")
+
 
 @bot.message_handler(content_types=["text"])
 def main(message):
     global state
 
     if state == 1:
+        print(message.text)
         add_category(message)
         state = 0
     elif state == 2:
         add_keyword(message)
         state = 0
-    elif state == 3:
-        show_categories(message)
-        state = 0
-    elif state == 4:
-        show_keywords(message)
-        state = 0
     elif state == 5:
         remove_category(message)
         state = 0
-    else:
+    elif state == 6:
         remove_keyword(message)
         state = 0
 
@@ -148,9 +169,9 @@ def main(message):
         state = 2
         bot.send_message(message.chat.id, "Enter new keyword")
     elif message.text == 'Show my categories':
-        state = 3
+        show_categories(message)
     elif message.text == 'Show my keywords':
-        state = 4
+        show_keywords(message)
     elif message.text == 'Remove category':
         state = 5
         bot.send_message(message.chat.id, "Enter name of category what you want to delete")

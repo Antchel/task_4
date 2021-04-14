@@ -1,27 +1,16 @@
 import sqlite3 as lite
+from typing import List, Any
+
 import telebot
 from config import telegram_token
 from newsapi import NewsApiClient
 from config import newsApi_token
 
-newsapi = NewsApiClient(api_key=newsApi_token)
-
-top_headlines = newsapi.get_top_headlines(q='war',
-                                          category='business')
-
 state = 0
-
-#sources = newsapi.get
-print(top_headlines['articles'][0]['title'])
-print(top_headlines['totalResults'])
 
 con = lite.connect('test.db', check_same_thread=False)
 cur = con.cursor()
 
-
-# cur.execute("drop table if exists users;")
-# cur.execute("drop table if exists categories;")
-# cur.execute("drop table if exists keywords;")
 cur.execute('CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY,'
             ' f_name varchar(50), l_name varchar(50));')
 cur.execute('CREATE TABLE IF NOT EXISTS categories (category_id INTEGER PRIMARY KEY AUTOINCREMENT,'
@@ -66,8 +55,8 @@ def show_categories(message):
     user_cats = cur.execute(f"SELECT cat_name FROM categories WHERE user_id = {message.from_user.id}").fetchall()
     if user_cats is None:
         bot.reply_to(message, "You haven't any categories")
-    else:  
-        bot.reply_to(message, f"List of your choosen categories {user_cats}")
+    else:
+        bot.reply_to(message, f"List of your chosen categories {user_cats}")
 
 
 def show_keywords(message):
@@ -75,7 +64,7 @@ def show_keywords(message):
     if user_keyw is None:
         bot.reply_to(message, "You haven't any keywords")
     else:  
-        bot.reply_to(message, f"List of your choosen categories : {user_keyw}")
+        bot.reply_to(message, f"List of your chosen categories : {user_keyw}")
 
 
 def remove_category(message):
@@ -84,7 +73,7 @@ def remove_category(message):
 
 
 def remove_keyword(message):
-    cur.execute(f"DELETE FROM keywords WHERE word_name = {message.text}")
+    cur.execute(f"DELETE FROM keywords WHERE word_name = '{message.text}'")
     con.commit()
 
 
@@ -110,7 +99,18 @@ def send_welcome(message):
 @bot.message_handler(commands=['show_news'])
 def get_news(message):
     bot.reply_to(message, "News list : \n")
-
+    newsapi = NewsApiClient(api_key=newsApi_token)
+    user_cats: List[Any] = cur.execute(f"SELECT cat_name FROM categories WHERE user_id = {message.from_user.id}").fetchall()
+    user_keyw: List[Any] = cur.execute(f"SELECT word_name FROM keywords WHERE user_id = {message.from_user.id}").fetchall()
+    print(type(user_cats))
+    print(type(user_keyw))
+    [i[0] for i in user_cats]
+    print(user_cats)
+    print(user_keyw)
+    top_headlines = newsapi.get_top_headlines(q=user_cats,
+                                              category=user_cats)
+    # sources = newsapi.get
+    bot.reply_to(message, f"{top_headlines['totalResults']} \n {top_headlines['articles'][0]['title']}")
 
 @bot.message_handler(content_types=["text"])
 def main(message):

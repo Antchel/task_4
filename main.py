@@ -63,19 +63,29 @@ def add_keyword(message):
 
 
 def show_categories(message):
-    pass
+    user_cats = cur.execute(f"SELECT cat_name FROM categories WHERE user_id = {message.from_user.id}").fetchall()
+    if user_cats is None:
+        bot.reply_to(message, "You haven't any categories")
+    else:  
+        bot.reply_to(message, f"List of your choosen categories {user_cats}")
 
 
 def show_keywords(message):
-    pass
+    user_keyw = cur.execute(f"SELECT word_name FROM keywords WHERE user_id = {message.from_user.id}").fetchall()
+    if user_keyw is None:
+        bot.reply_to(message, "You haven't any keywords")
+    else:  
+        bot.reply_to(message, f"List of your choosen categories : {user_keyw}")
 
 
 def remove_category(message):
-    pass
+    cur.execute(f"DELETE FROM categories WHERE cat_name = '{message.text}'")
+    con.commit()
 
 
 def remove_keyword(message):
-    pass
+    cur.execute(f"DELETE FROM keywords WHERE word_name = {message.text}")
+    con.commit()
 
 
 
@@ -95,6 +105,11 @@ def send_welcome(message):
 def send_welcome(message):
     print(message)
     bot.reply_to(message, f"msg = {message.text} There is a short list of possible commands")
+    
+    
+@bot.message_handler(commands=['show_news'])
+def get_news(message):
+    bot.reply_to(message, "News list : \n")
 
 
 @bot.message_handler(content_types=["text"])
@@ -131,14 +146,17 @@ def main(message):
         bot.send_message(message.chat.id, "Choose the possible categories", reply_markup=keyboard1)
     elif message.text == 'Add news keyword':
         state = 2
+        bot.send_message(message.chat.id, "Enter new keyword")
     elif message.text == 'Show my categories':
-        pass
+        state = 3
     elif message.text == 'Show my keywords':
-        pass
+        state = 4
     elif message.text == 'Remove category':
-        pass
+        state = 5
+        bot.send_message(message.chat.id, "Enter name of category what you want to delete")
     elif message.text == 'Remove keyword':
-        pass
+        state = 6
+        bot.send_message(message.chat.id, "Enter name of keyword what you want to delete")
 
 
 bot.polling()

@@ -1,6 +1,5 @@
 import sqlite3 as lite
 from typing import List, Any
-
 import telebot
 from config import telegram_token
 from newsapi import NewsApiClient
@@ -18,9 +17,6 @@ cur.execute('CREATE TABLE IF NOT EXISTS categories (category_id INTEGER PRIMARY 
 cur.execute('CREATE TABLE IF NOT EXISTS keywords (keyword_id integer primary key AUTOINCREMENT,'
             'word_name varchar(100), user_id INTEGER)')
 data = cur.fetchone()
-print(data)
-
-# con.close() //FIXME: How correctly close current connection?
 
 bot = telebot.TeleBot(telegram_token, parse_mode=None)
 keyboard = telebot.types.ReplyKeyboardMarkup(True)
@@ -95,8 +91,9 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
-    print(message)
-    bot.reply_to(message, f"msg = {message.text} There is a short list of possible commands")
+    bot.reply_to(message, f"msg = {message.text} There is a short list of possible commands\n"
+                          f"/start - this command registry user (if he isn't registry) and opens main menu\n"
+                          f"/show_news - this command show news based on chosen categories and keywords\n")
 
 
 @bot.message_handler(commands=['show_news'])
@@ -117,25 +114,20 @@ def get_news(message):
                                                       category=cat,
                                                       page_size=10,
                                                       page=1)
-            print(top_headlines['totalResults'])
-            print(keyword)
-            print(cat)
-            print(keyword_list)
-            print(category_list)
+            bot.reply_to(message, f"News category is \"{cat}\"\n News keyword is \"{keyword}\"\n")
+
             if top_headlines['totalResults']:
                 if top_headlines['totalResults'] > 10:
                     cnt = 10
                 else:
                     cnt = top_headlines['totalResults']
                 for i in range(cnt):
-                    print(top_headlines)
-                    print(cnt)
-                    print(i)
+
                     bot.reply_to(message, f"====== {i+1} Article =========\n")
                     bot.reply_to(message, f" Title \n {top_headlines['articles'][i]['title']}\n"
                                           f" Link {top_headlines['articles'][i]['url']}\n")
-    else:
-        bot.reply_to(message, "Can't found any news!\n")
+            else:
+                bot.reply_to(message, "Can't found any news!\n")
 
 
 @bot.message_handler(content_types=["text"])
